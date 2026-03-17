@@ -13,6 +13,23 @@ namespace IDEncoder;
 public sealed class EncodedIdConverter : JsonConverter<EncodedId> {
     internal static IDEncoder? Encoder { get; set; }
 
+    private readonly string? salt;
+
+
+    /// <summary>
+    /// Creates a converter with no salt (default behavior).
+    /// </summary>
+    public EncodedIdConverter() : this(null) {
+    }
+
+    /// <summary>
+    /// Creates a converter with a specific salt for per-property encoding.
+    /// </summary>
+    /// <param name="salt">The salt string, or null for no salt.</param>
+    internal EncodedIdConverter(string? salt) {
+        this.salt = salt;
+    }
+
 
     /// <summary>
     /// Reads an <see cref="EncodedId"/> from JSON.
@@ -38,7 +55,7 @@ public sealed class EncodedIdConverter : JsonConverter<EncodedId> {
         if (reader.TokenType == JsonTokenType.String) {
             string encoded = reader.GetString()
                 ?? throw new JsonException("Expected non-null string for EncodedId.");
-            return new EncodedId(encoder.Decode(encoded));
+            return new EncodedId(encoder.Decode(encoded, salt));
         }
 
         if (reader.TokenType == JsonTokenType.Number) {
@@ -63,6 +80,6 @@ public sealed class EncodedIdConverter : JsonConverter<EncodedId> {
         var encoder = Encoder
             ?? throw new InvalidOperationException("IDEncoder is not configured. Call services.AddIDEncoder() first.");
 
-        writer.WriteStringValue(encoder.Encode(value.Value));
+        writer.WriteStringValue(encoder.Encode(value.Value, salt));
     }
 }

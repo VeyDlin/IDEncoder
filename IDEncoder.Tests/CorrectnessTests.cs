@@ -169,4 +169,56 @@ public class CorrectnessTests {
 
         Assert.NotEqual(encoded1, encoded2);
     }
+
+    [Fact]
+    public void DifferentSalts_ProduceDifferentResults() {
+        var encoder = new IDEncoder(TestSecret);
+
+        string noSalt = encoder.Encode(42);
+        string video = encoder.Encode(42, "video");
+        string gallery = encoder.Encode(42, "gallery");
+
+        Assert.NotEqual(noSalt, video);
+        Assert.NotEqual(noSalt, gallery);
+        Assert.NotEqual(video, gallery);
+    }
+
+    [Fact]
+    public void SameSalt_ProducesSameResult() {
+        var encoder = new IDEncoder(TestSecret);
+
+        string first = encoder.Encode(42, "video");
+        string second = encoder.Encode(42, "video");
+
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void Salt_RoundTrip() {
+        var encoder = new IDEncoder(TestSecret);
+        var random = new Random(99999);
+
+        string[] salts = ["video", "gallery", "user", "comment"];
+
+        for (int i = 0; i < 1000; i++) {
+            long original = ((long)random.Next() << 32) | (long)(uint)random.Next();
+            string salt = salts[i % salts.Length];
+
+            string encoded = encoder.Encode(original, salt);
+            long decoded = encoder.Decode(encoded, salt);
+
+            Assert.Equal(original, decoded);
+        }
+    }
+
+    [Fact]
+    public void Salt_WrongSalt_DecodesToDifferentValue() {
+        var encoder = new IDEncoder(TestSecret);
+
+        long original = 42;
+        string encoded = encoder.Encode(original, "video");
+        long decoded = encoder.Decode(encoded, "gallery");
+
+        Assert.NotEqual(original, decoded);
+    }
 }

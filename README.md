@@ -18,6 +18,7 @@ JSON:      { "id": "xK9mQ3bPl2a", "title": "..." }
 - **Hide sequential IDs** — users can't guess or enumerate resource URLs
 - **Short output** — always exactly 11 characters (vs 20 digits for `long.MaxValue`)
 - **Reversible** — decode back to the original number with the same key
+- **Salted encoding** — same ID produces different strings for different entity types
 - **Zero external crypto dependencies** — ships its own Blowfish implementation
 
 ## Install
@@ -34,6 +35,24 @@ var encoder = new IDEncoder.IDEncoder("my-secret-key");
 string encoded = encoder.Encode(42);       // "xK9mQ3bPl2a"
 long decoded = encoder.Decode(encoded);    // 42
 ```
+
+## Salt
+
+By default, the same numeric ID always encodes to the same string. This means a user who knows a video ID could try it as a gallery ID, a user ID, etc.
+
+Salt solves this — the same number produces different strings for different entity types:
+
+```csharp
+encoder.Encode(42);                // "xK9mQ3bPl2a"
+encoder.Encode(42, "video");       // "t7RqN1cWm5z"
+encoder.Encode(42, "gallery");     // "p3KmW8vLn9a"
+
+// Decoding requires the same salt
+encoder.Decode("t7RqN1cWm5z", "video");    // 42
+encoder.Decode("p3KmW8vLn9a", "gallery");  // 42
+```
+
+Salted ciphers are cached internally — no performance penalty for reusing the same salt.
 
 ## ASP.NET Core integration
 
@@ -87,6 +106,32 @@ public async Task<IActionResult> Get(EncodedId id) {
 
 The database stores a plain `long`. Encoding only happens at the JSON/URL boundary.
 
+### Salt via attribute
+
+Use `[Salt("...")]` on properties to automatically apply per-entity-type salt during JSON serialization:
+
+```csharp
+public record VideoResult(
+    [property: Salt("video")] EncodedId Id,
+    string Title
+);
+
+public record GalleryResult(
+    [property: Salt("gallery")] EncodedId Id,
+    string Title
+);
+
+// Same DB id = 42, but different JSON output:
+// VideoResult:   { "id": "t7RqN1cWm5z", "title": "..." }
+// GalleryResult: { "id": "p3KmW8vLn9a", "title": "..." }
+```
+
+Enable salt support in JSON options:
+
+```csharp
+services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.UseIDEncoderSalts());
+```
+
 ### JSON behavior
 
 | Input | Output |
@@ -107,3 +152,7 @@ encoder.Encode(42, buffer);
 // Decode from a span (no string needed)
 long id = encoder.Decode(buffer);
 ```
+
+## License
+
+MIT

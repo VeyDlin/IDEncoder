@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 
 namespace IDEncoder;
@@ -6,6 +7,8 @@ namespace IDEncoder;
 /// <summary>
 /// Encodes and decodes long IDs into short Base62 strings using Blowfish encryption.
 /// Thread-safe after construction. Create once and reuse.
+/// Supports optional salt to produce different encodings for the same ID in different contexts
+/// (e.g. video ID vs gallery ID).
 /// </summary>
 public sealed class IDEncoder {
     private const string Base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -15,8 +18,10 @@ public sealed class IDEncoder {
     /// </summary>
     public const int EncodedLength = 11;
 
+    private readonly string baseKey;
     private readonly Blowfish encryptCipher;
     private readonly Blowfish decryptCipher;
+    private readonly ConcurrentDictionary<string, (Blowfish encrypt, Blowfish decrypt)> saltedCiphers = new();
 
 
     /// <summary>
@@ -32,11 +37,9 @@ public sealed class IDEncoder {
             throw new ArgumentException("Secret key must not be null or empty.", nameof(secretKey));
         }
 
-        byte[] keyBytes = Encoding.UTF8.GetBytes(secretKey);
-        if (keyBytes.Length > 56) {
-            Array.Resize(ref keyBytes, 56);
-        }
+        baseKey = secretKey;
 
+        byte[] keyBytes = MakeKeyBytes(secretKey);
         encryptCipher = new Blowfish(keyBytes);
         decryptCipher = new Blowfish(keyBytes);
     }
@@ -46,9 +49,13 @@ public sealed class IDEncoder {
     /// Encodes a nullable long. Returns null if input is null.
     /// </summary>
     /// <param name="number">The ID to encode, or null.</param>
+    /// <param name="salt">
+    /// Optional salt to differentiate encodings across entity types (e.g. "video", "gallery").
+    /// The same salt must be used for decoding.
+    /// </param>
     /// <returns>An 11-character Base62 string, or null if <paramref name="number"/> is null.</returns>
-    public string? EncodeNull(long? number) {
-        return number is null ? null : Encode(number.Value);
+    public string? EncodeNull(long? number, string? salt = null) {
+        return number is null ? null : Encode(number.Value, salt);
     }
 
 
@@ -56,10 +63,14 @@ public sealed class IDEncoder {
     /// Encodes a long ID into an 11-character Base62 string.
     /// </summary>
     /// <param name="number">The ID to encode. Any long value is valid, including negative.</param>
+    /// <param name="salt">
+    /// Optional salt to differentiate encodings across entity types (e.g. "video", "gallery").
+    /// The same salt must be used for decoding.
+    /// </param>
     /// <returns>An 11-character Base62 string (characters 0-9, A-Z, a-z).</returns>
-    public string Encode(long number) {
+    public string Encode(long number, string? salt = null) {
         Span<char> buffer = stackalloc char[EncodedLength];
-        Encode(number, buffer);
+        Encode(number, buffer, salt);
         return new string(buffer);
     }
 
@@ -72,10 +83,14 @@ public sealed class IDEncoder {
     /// <param name="destination">
     /// Buffer to write the result into. Must have at least <see cref="EncodedLength"/> characters.
     /// </param>
+    /// <param name="salt">
+    /// Optional salt to differentiate encodings across entity types (e.g. "video", "gallery").
+    /// The same salt must be used for decoding.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// Thrown when <paramref name="destination"/> length is less than <see cref="EncodedLength"/>.
     /// </exception>
-    public void Encode(long number, Span<char> destination) {
+    public void Encode(long number, Span<char> destination, string? salt = null) {
         if (destination.Length < EncodedLength) {
             throw new ArgumentException(
                 $"Destination must be at least {EncodedLength} characters.",
@@ -83,12 +98,14 @@ public sealed class IDEncoder {
             );
         }
 
+        var cipher = GetEncryptCipher(salt);
+
         ulong unsignedNumber = unchecked((ulong)number);
         Span<byte> input = stackalloc byte[8];
         Span<byte> output = stackalloc byte[8];
 
         BitConverter.TryWriteBytes(input, unsignedNumber);
-        encryptCipher.Encrypt(input, output);
+        cipher.Encrypt(input, output);
 
         ulong value = BitConverter.ToUInt64(output);
 
@@ -103,13 +120,16 @@ public sealed class IDEncoder {
     /// Decodes a nullable string. Returns null if input is null.
     /// </summary>
     /// <param name="encoded">An 11-character Base62 string, or null.</param>
+    /// <param name="salt">
+    /// The same salt that was used during encoding, or null if no salt was used.
+    /// </param>
     /// <returns>The original long ID, or null if <paramref name="encoded"/> is null.</returns>
     /// <exception cref="ArgumentException">
     /// Thrown when <paramref name="encoded"/> is not exactly <see cref="EncodedLength"/> characters
     /// or contains characters outside the Base62 alphabet.
     /// </exception>
-    public long? DecodeNull(string? encoded) {
-        return encoded is null ? null : Decode(encoded);
+    public long? DecodeNull(string? encoded, string? salt = null) {
+        return encoded is null ? null : Decode(encoded, salt);
     }
 
 
@@ -117,15 +137,18 @@ public sealed class IDEncoder {
     /// Decodes an 11-character Base62 string back to the original long ID.
     /// </summary>
     /// <param name="encoded">
-    /// An 11-character Base62 string previously produced by <see cref="Encode(long)"/>.
+    /// An 11-character Base62 string previously produced by <see cref="Encode(long, string?)"/>.
+    /// </param>
+    /// <param name="salt">
+    /// The same salt that was used during encoding, or null if no salt was used.
     /// </param>
     /// <returns>The original long ID.</returns>
     /// <exception cref="ArgumentException">
     /// Thrown when <paramref name="encoded"/> is not exactly <see cref="EncodedLength"/> characters
     /// or contains characters outside the Base62 alphabet (0-9, A-Z, a-z).
     /// </exception>
-    public long Decode(string encoded) {
-        return Decode(encoded.AsSpan());
+    public long Decode(string encoded, string? salt = null) {
+        return Decode(encoded.AsSpan(), salt);
     }
 
 
@@ -134,14 +157,17 @@ public sealed class IDEncoder {
     /// </summary>
     /// <param name="encoded">
     /// A span of exactly <see cref="EncodedLength"/> Base62 characters
-    /// previously produced by <see cref="Encode(long, Span{char})"/>.
+    /// previously produced by <see cref="Encode(long, Span{char}, string?)"/>.
+    /// </param>
+    /// <param name="salt">
+    /// The same salt that was used during encoding, or null if no salt was used.
     /// </param>
     /// <returns>The original long ID.</returns>
     /// <exception cref="ArgumentException">
     /// Thrown when <paramref name="encoded"/> length is not exactly <see cref="EncodedLength"/>
     /// or contains characters outside the Base62 alphabet (0-9, A-Z, a-z).
     /// </exception>
-    public long Decode(ReadOnlySpan<char> encoded) {
+    public long Decode(ReadOnlySpan<char> encoded, string? salt = null) {
         if (encoded.Length != EncodedLength) {
             throw new ArgumentException("Invalid encoded ID format.", nameof(encoded));
         }
@@ -155,13 +181,45 @@ public sealed class IDEncoder {
             value = (value * 62) + (ulong)index;
         }
 
+        var cipher = GetDecryptCipher(salt);
+
         Span<byte> encrypted = stackalloc byte[8];
         Span<byte> output = stackalloc byte[8];
 
         BitConverter.TryWriteBytes(encrypted, value);
-        decryptCipher.Decrypt(encrypted, output);
+        cipher.Decrypt(encrypted, output);
 
         ulong unsignedResult = BitConverter.ToUInt64(output);
         return unchecked((long)unsignedResult);
+    }
+
+
+    private Blowfish GetEncryptCipher(string? salt) {
+        if (string.IsNullOrEmpty(salt)) {
+            return encryptCipher;
+        }
+        return GetOrCreateSaltedCiphers(salt).encrypt;
+    }
+
+    private Blowfish GetDecryptCipher(string? salt) {
+        if (string.IsNullOrEmpty(salt)) {
+            return decryptCipher;
+        }
+        return GetOrCreateSaltedCiphers(salt).decrypt;
+    }
+
+    private (Blowfish encrypt, Blowfish decrypt) GetOrCreateSaltedCiphers(string salt) {
+        return saltedCiphers.GetOrAdd(salt, s => {
+            byte[] keyBytes = MakeKeyBytes(baseKey + ":" + s);
+            return (new Blowfish(keyBytes), new Blowfish(keyBytes));
+        });
+    }
+
+    private static byte[] MakeKeyBytes(string key) {
+        byte[] keyBytes = Encoding.UTF8.GetBytes(key);
+        if (keyBytes.Length > 56) {
+            Array.Resize(ref keyBytes, 56);
+        }
+        return keyBytes;
     }
 }
