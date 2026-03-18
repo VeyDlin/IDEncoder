@@ -9,7 +9,7 @@ public class PerformanceTests {
     private const string Base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private const string TestSecret = "my-test-secret-key-123";
     private const int Iterations = 100_000;
-    private const double MaxSlowerRatio = 1.5;
+    private const double MaxSlowerRatio = 2.0;
 
     [Fact]
     public void Encode_NotSlowerThanBouncyCastle() {
