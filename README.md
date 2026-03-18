@@ -126,10 +126,20 @@ public record GalleryResult(
 // GalleryResult: { "id": "p3KmW8vLn9a", "title": "..." }
 ```
 
-Enable salt support in JSON options:
+Enable salt support in JSON and route binding:
 
 ```csharp
-services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.UseIDEncoderSalts());
+services.AddControllers(o => o.UseIDEncoderModelBinding())
+    .AddJsonOptions(o => o.JsonSerializerOptions.UseIDEncoderSalts());
+```
+
+Salt also works on controller parameters for route/query binding:
+
+```csharp
+[HttpPost("{id}/test")]
+public async Task<IActionResult> TestConnection([Salt("s3")] EncodedId id) {
+    long dbId = id; // correctly decoded with "s3" salt
+}
 ```
 
 ### JSON behavior

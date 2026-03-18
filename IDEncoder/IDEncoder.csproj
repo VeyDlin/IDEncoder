@@ -4,7 +4,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<Version>0.2.0</Version>
+		<Version>0.3.0</Version>
 		<PackageId>IDEncoder</PackageId>
 		<Authors>VeyDlin</Authors>
 		<Description>YouTube-style ID encoding for .NET — turns numeric long IDs into short, URL-safe Base62 strings using Blowfish encryption</Description>
@@ -19,7 +19,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
+		<InternalsVisibleTo Include="IDEncoder.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 
 </Project>

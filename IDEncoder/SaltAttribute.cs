@@ -2,25 +2,28 @@ namespace IDEncoder;
 
 
 /// <summary>
-/// Specifies a salt for <see cref="EncodedId"/> properties to produce different encodings
+/// Specifies a salt for <see cref="EncodedId"/> to produce different encodings
 /// for the same numeric ID across different entity types.
-/// Requires <see cref="IDEncoderJsonExtensions.UseIDEncoderSalts"/> to be configured on <c>JsonSerializerOptions</c>.
+/// Works with:
+/// <list type="bullet">
+/// <item>JSON serialization — requires <see cref="IDEncoderJsonExtensions.UseIDEncoderSalts"/> on <c>JsonSerializerOptions</c>.</item>
+/// <item>Route/query binding — requires <see cref="IDEncoderMvcExtensions.UseIDEncoderModelBinding"/> on <c>MvcOptions</c>.</item>
+/// </list>
 /// </summary>
 /// <example>
 /// <code>
+/// // On DTO properties (JSON serialization):
 /// public record VideoResult(
 ///     [property: Salt("video")] EncodedId Id,
 ///     string Title
 /// );
 ///
-/// public record GalleryResult(
-///     [property: Salt("gallery")] EncodedId Id,
-///     string Title
-/// );
-/// // Same numeric ID 42 produces different encoded strings for video vs gallery.
+/// // On controller parameters (route binding):
+/// [HttpGet("{id}")]
+/// public IActionResult Get([Salt("video")] EncodedId id) { ... }
 /// </code>
 /// </example>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter)]
 public sealed class SaltAttribute : Attribute {
     /// <summary>
     /// The salt string used to differentiate encodings.
