@@ -162,7 +162,3 @@ encoder.Encode(42, buffer);
 // Decode from a span (no string needed)
 long id = encoder.Decode(buffer);
 ```
-
-## License
-
-MIT
