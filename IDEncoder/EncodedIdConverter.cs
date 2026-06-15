@@ -46,7 +46,7 @@ public sealed class EncodedIdConverter : JsonConverter<EncodedId> {
     /// Thrown when the JSON token is null or an unexpected type (not string or number).
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Thrown when the string value is not a valid 11-character Base62 encoded ID.
+    /// Thrown when the string value is not a valid encoded ID.
     /// </exception>
     public override EncodedId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) {
         var encoder = Encoder

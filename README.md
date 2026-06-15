@@ -16,7 +16,7 @@ JSON:      { "id": "xK9mQ3bPl2a", "title": "..." }
 ## Why
 
 - **Hide sequential IDs** — users can't guess or enumerate resource URLs
-- **Short output** — always exactly 11 characters (vs 20 digits for `long.MaxValue`)
+- **Short output** — fixed 11 characters with the default Blowfish codec (vs 20 digits for `long.MaxValue`); 2–12 characters with the Sqids-style codec
 - **Reversible** — decode back to the original number with the same key
 - **Salted encoding** — same ID produces different strings for different entity types
 - **Zero external crypto dependencies** — ships its own Blowfish implementation
@@ -53,6 +53,36 @@ encoder.Decode("p3KmW8vLn9a", "gallery");  // 42
 ```
 
 Salted ciphers are cached internally — no performance penalty for reusing the same salt.
+
+## Codecs
+
+`IDEncoder` is a facade over an `IIdCodec`. Two are built in:
+
+- **`BlowfishIdCodec`** (default) — Blowfish encryption, fixed 11-char output, hides sequential IDs. `new IDEncoder("secret")` uses this.
+- **`SqidsIdCodec`** — simple, non-secure, Sqids-style: short variable-length strings where sequential IDs look dissimilar, with no secret key. Obfuscation only, not cryptography.
+
+```csharp
+services.AddIDEncoder(new SqidsIdCodec());          // simple codec
+services.AddIDEncoder(new BlowfishIdCodec("key"));  // explicit Blowfish
+```
+
+### Custom codecs
+
+Implement `IIdCodec`, or derive from `IdCodec` to get salt caching for free, and register it:
+
+```csharp
+public sealed class MyCodec : IdCodec {
+    public override int MaxEncodedLength => 16;
+    public override string Encode(long id) => /* ... */;
+    public override int Encode(long id, Span<char> destination) => /* ... */;
+    public override long Decode(ReadOnlySpan<char> encoded) => /* ... */;
+    protected override IIdCodec CreateWithSalt(string salt) => /* salted variation from base */;
+}
+
+services.AddIDEncoder(new MyCodec());
+```
+
+> Codec output is not self-describing. Don't switch codecs over data that already has encoded IDs in the wild — a string from one codec won't decode correctly with another.
 
 ## ASP.NET Core integration
 
@@ -155,10 +185,17 @@ public async Task<IActionResult> TestConnection([Salt("s3")] EncodedId id) {
 For high-throughput scenarios, span-based overloads avoid heap allocations:
 
 ```csharp
-// Encode into a stack buffer
-Span<char> buffer = stackalloc char[IDEncoder.IDEncoder.EncodedLength];
-encoder.Encode(42, buffer);
+// Encode into a stack buffer sized for the active codec
+Span<char> buffer = stackalloc char[encoder.MaxEncodedLength];
+int n = encoder.Encode(42, buffer);
 
-// Decode from a span (no string needed)
-long id = encoder.Decode(buffer);
+// Decode from the written slice (works for fixed- and variable-length codecs)
+long id = encoder.Decode(buffer[..n]);
 ```
+
+## Upgrading from 0.3.x
+
+The zero-alloc `Encode(long, Span<char>, …)` overload now returns `int` (the number of
+characters written) instead of `void`. Source-compatible if you ignore the result, but a
+binary-breaking change — recompile against 0.4.0. Use the returned count to slice
+variable-length output before decoding: `encoder.Decode(buffer[..n])`.

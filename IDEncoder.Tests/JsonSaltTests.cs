@@ -2,6 +2,12 @@ using System.Text.Json;
 
 namespace IDEncoder.Tests;
 
+// Tests that touch the process-wide static EncodedIdConverter.Encoder must not run in
+// parallel with each other; xUnit serializes classes sharing a collection.
+[CollectionDefinition("GlobalEncoder")]
+public class GlobalEncoderCollection { }
+
+[Collection("GlobalEncoder")]
 public class JsonSaltTests {
     private const string TestSecret = "my-test-secret-key-123";
 
@@ -18,7 +24,9 @@ public class JsonSaltTests {
     }
 
     private static void EnsureEncoder() {
-        EncodedIdConverter.Encoder ??= new IDEncoder(TestSecret);
+        // Set explicitly (not ??=) so a codec left in the static slot by another test
+        // class in this collection cannot leak in.
+        EncodedIdConverter.Encoder = new IDEncoder(TestSecret);
     }
 
     [Fact]

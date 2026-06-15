@@ -26,27 +26,22 @@ public sealed class IDEncoderProvider {
     public bool IsConfigured => encoder is not null;
 
 
-    /// <summary>
-    /// Initializes the encoder with the given secret key.
-    /// Also wires up <see cref="EncodedIdConverter"/> so JSON serialization
-    /// and ASP.NET route binding start working immediately.
-    /// Can only be called once per application lifetime.
-    /// </summary>
-    /// <param name="secretKey">
-    /// Secret key for Blowfish encryption (1–56 bytes in UTF-8). Keys longer than 56 bytes are truncated.
-    /// </param>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when <see cref="Configure"/> has already been called.
-    /// </exception>
-    /// <exception cref="ArgumentException">
-    /// Thrown when <paramref name="secretKey"/> is null or empty.
-    /// </exception>
+    /// <summary>Initializes the encoder with a Blowfish key. Can only be called once.</summary>
+    /// <exception cref="InvalidOperationException">Thrown when already configured.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="secretKey"/> is null or empty.</exception>
     public void Configure(string secretKey) {
+        Configure(new BlowfishIdCodec(secretKey));
+    }
+
+
+    /// <summary>Initializes the encoder with the given codec. Can only be called once.</summary>
+    /// <exception cref="InvalidOperationException">Thrown when already configured.</exception>
+    public void Configure(IIdCodec codec) {
         if (encoder is not null) {
             throw new InvalidOperationException("IDEncoder is already configured.");
         }
 
-        var instance = new IDEncoder(secretKey);
+        var instance = new IDEncoder(codec);
         encoder = instance;
         EncodedIdConverter.Encoder = instance;
     }

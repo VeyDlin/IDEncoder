@@ -62,7 +62,7 @@ public readonly struct EncodedId : IEquatable<EncodedId>, IParsable<EncodedId> {
     /// For salted encoding use <see cref="ToString(string?)"/>.
     /// </summary>
     /// <returns>
-    /// An 11-character Base62 string when the encoder is configured,
+    /// A short Base62 string when the encoder is configured,
     /// or the decimal representation of <see cref="Value"/> otherwise.
     /// </returns>
     public override string ToString() {
@@ -76,7 +76,7 @@ public readonly struct EncodedId : IEquatable<EncodedId>, IParsable<EncodedId> {
     /// Optional salt to differentiate encodings across entity types (e.g. "video", "gallery").
     /// </param>
     /// <returns>
-    /// An 11-character Base62 string when the encoder is configured,
+    /// A short Base62 string when the encoder is configured,
     /// or the decimal representation of <see cref="Value"/> otherwise.
     /// </returns>
     public string ToString(string? salt) {
@@ -92,14 +92,14 @@ public readonly struct EncodedId : IEquatable<EncodedId>, IParsable<EncodedId> {
     /// Parses a Base62-encoded string into an <see cref="EncodedId"/> (without salt).
     /// Used by ASP.NET Core for route and query parameter binding.
     /// </summary>
-    /// <param name="s">An 11-character Base62 string to decode.</param>
+    /// <param name="s">An encoded string to decode.</param>
     /// <param name="provider">Ignored. Present to satisfy <see cref="IParsable{TSelf}"/>.</param>
     /// <returns>An <see cref="EncodedId"/> containing the decoded long value.</returns>
     /// <exception cref="InvalidOperationException">
     /// Thrown when <see cref="IDEncoder"/> is not configured via DI.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Thrown when <paramref name="s"/> is not a valid 11-character Base62 string.
+    /// Thrown when <paramref name="s"/> is not a valid encoded string.
     /// </exception>
     public static EncodedId Parse(string s, IFormatProvider? provider) {
         return Parse(s, salt: null);
@@ -108,7 +108,7 @@ public readonly struct EncodedId : IEquatable<EncodedId>, IParsable<EncodedId> {
     /// <summary>
     /// Parses a Base62-encoded string into an <see cref="EncodedId"/> with an optional salt.
     /// </summary>
-    /// <param name="s">An 11-character Base62 string to decode.</param>
+    /// <param name="s">An encoded string to decode.</param>
     /// <param name="salt">
     /// The same salt that was used during encoding, or null if no salt was used.
     /// </param>
@@ -117,7 +117,7 @@ public readonly struct EncodedId : IEquatable<EncodedId>, IParsable<EncodedId> {
     /// Thrown when <see cref="IDEncoder"/> is not configured via DI.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Thrown when <paramref name="s"/> is not a valid 11-character Base62 string.
+    /// Thrown when <paramref name="s"/> is not a valid encoded string.
     /// </exception>
     public static EncodedId Parse(string s, string? salt) {
         var encoder = EncodedIdConverter.Encoder
@@ -130,7 +130,7 @@ public readonly struct EncodedId : IEquatable<EncodedId>, IParsable<EncodedId> {
     /// Tries to parse a Base62-encoded string into an <see cref="EncodedId"/> (without salt).
     /// Returns false if the string is invalid or the encoder is not configured.
     /// </summary>
-    /// <param name="s">An 11-character Base62 string to decode, or null.</param>
+    /// <param name="s">An encoded string to decode, or null.</param>
     /// <param name="provider">Ignored. Present to satisfy <see cref="IParsable{TSelf}"/>.</param>
     /// <param name="result">
     /// When this method returns true, contains the decoded <see cref="EncodedId"/>.
@@ -147,7 +147,7 @@ public readonly struct EncodedId : IEquatable<EncodedId>, IParsable<EncodedId> {
     /// Tries to parse a Base62-encoded string into an <see cref="EncodedId"/> with an optional salt.
     /// Returns false if the string is invalid or the encoder is not configured.
     /// </summary>
-    /// <param name="s">An 11-character Base62 string to decode, or null.</param>
+    /// <param name="s">An encoded string to decode, or null.</param>
     /// <param name="salt">
     /// The same salt that was used during encoding, or null if no salt was used.
     /// </param>
@@ -160,12 +160,18 @@ public readonly struct EncodedId : IEquatable<EncodedId>, IParsable<EncodedId> {
     /// </returns>
     public static bool TryParse([NotNullWhen(true)] string? s, string? salt, out EncodedId result) {
         result = default;
-        if (string.IsNullOrEmpty(s) || s.Length != IDEncoder.EncodedLength) {
+        if (string.IsNullOrEmpty(s)) {
             return false;
         }
 
         var encoder = EncodedIdConverter.Encoder;
         if (encoder is null) {
+            return false;
+        }
+
+        // Upper-bound guard before delegating: keeps untrusted input from reaching the decoder
+        // with an unbounded length (the bare catch below cannot catch a StackOverflowException).
+        if (s.Length > encoder.MaxEncodedLength) {
             return false;
         }
 

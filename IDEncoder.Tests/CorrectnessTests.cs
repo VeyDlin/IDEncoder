@@ -221,4 +221,18 @@ public class CorrectnessTests {
 
         Assert.NotEqual(original, decoded);
     }
+
+    [Fact]
+    public void Decode_OverflowString_Throws() {
+        var encoder = new IDEncoder(TestSecret);
+
+        // "zzzzzzzzzzz" = 62^11 - 1, which exceeds ulong.MaxValue (62^11 > 2^64).
+        Assert.Throws<ArgumentException>(() => encoder.Decode("zzzzzzzzzzz"));
+    }
+
+    [Fact]
+    public void Constructor_EmptyKey_ThrowsWithSecretKeyParamName() {
+        var ex = Assert.Throws<ArgumentException>(() => new IDEncoder(""));
+        Assert.Equal("secretKey", ex.ParamName);
+    }
 }
