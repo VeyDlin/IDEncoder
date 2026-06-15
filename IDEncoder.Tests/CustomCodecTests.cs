@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace IDEncoder.Tests;
 
+[Collection("GlobalEncoder")]
 public class CustomCodecTests {
     private sealed class ReverseDigitsCodec : IdCodec {
         public override int MaxEncodedLength => 20;
