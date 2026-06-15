@@ -96,4 +96,20 @@ public class SqidsCodecTests {
         // Captured to freeze the wire format. A change here means the format changed.
         Assert.Equal("qln", new SqidsIdCodec().Encode(42));
     }
+
+    [Fact]
+    public void Decode_WrongSalt_DoesNotReturnOriginal() {
+        var codec = new SqidsIdCodec();
+        string encoded = codec.Encode(42);
+        var salted = codec.WithSalt("video");
+
+        // Decoding a default-alphabet string under a different salt must not yield the
+        // original value: the canonical re-encode check rejects it, or it maps elsewhere.
+        try {
+            Assert.NotEqual(42L, salted.Decode(encoded));
+        }
+        catch (ArgumentException) {
+            // Rejected as non-canonical — also acceptable.
+        }
+    }
 }
