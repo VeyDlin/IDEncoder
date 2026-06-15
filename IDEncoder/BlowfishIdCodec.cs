@@ -16,13 +16,15 @@ public sealed class BlowfishIdCodec : IdCodec {
 
     /// <summary>Creates a codec from a secret key (1-56 UTF-8 bytes; longer keys are truncated).</summary>
     /// <exception cref="ArgumentException">Thrown when <paramref name="secretKey"/> is null or empty.</exception>
-    public BlowfishIdCodec(string secretKey) : this(secretKey, secretKey) {
+    public BlowfishIdCodec(string secretKey) {
+        if (string.IsNullOrEmpty(secretKey)) {
+            throw new ArgumentException("Secret key must not be null or empty.", nameof(secretKey));
+        }
+        baseKey = secretKey;
+        cipher = new Blowfish(MakeKeyBytes(secretKey));
     }
 
     private BlowfishIdCodec(string baseKey, string effectiveKey) {
-        if (string.IsNullOrEmpty(effectiveKey)) {
-            throw new ArgumentException("Secret key must not be null or empty.", nameof(effectiveKey));
-        }
         this.baseKey = baseKey;
         cipher = new Blowfish(MakeKeyBytes(effectiveKey));
     }
