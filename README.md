@@ -16,7 +16,7 @@ JSON:      { "id": "xK9mQ3bPl2a", "title": "..." }
 ## Why
 
 - **Hide sequential IDs** — users can't guess or enumerate resource URLs
-- **Short output** — always exactly 11 characters (vs 20 digits for `long.MaxValue`)
+- **Short output** — fixed 11 characters with the default Blowfish codec (vs 20 digits for `long.MaxValue`); 2–12 characters with the Sqids-style codec
 - **Reversible** — decode back to the original number with the same key
 - **Salted encoding** — same ID produces different strings for different entity types
 - **Zero external crypto dependencies** — ships its own Blowfish implementation
@@ -192,6 +192,13 @@ int n = encoder.Encode(42, buffer);
 // Decode from the written slice (works for fixed- and variable-length codecs)
 long id = encoder.Decode(buffer[..n]);
 ```
+
+## Upgrading from 0.3.x
+
+The zero-alloc `Encode(long, Span<char>, …)` overload now returns `int` (the number of
+characters written) instead of `void`. Source-compatible if you ignore the result, but a
+binary-breaking change — recompile against 0.4.0. Use the returned count to slice
+variable-length output before decoding: `encoder.Decode(buffer[..n])`.
 
 ## License
 

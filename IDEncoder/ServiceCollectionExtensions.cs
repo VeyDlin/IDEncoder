@@ -26,6 +26,7 @@ public static class ServiceCollectionExtensions {
         var encoder = new IDEncoder(secretKey);
         EncodedIdConverter.Encoder = encoder;
         services.AddSingleton(encoder);
+        services.AddSingleton(encoder.Codec);
         return services;
     }
 
@@ -49,6 +50,7 @@ public static class ServiceCollectionExtensions {
             EncodedIdConverter.Encoder = encoder;
             return encoder;
         });
+        services.AddSingleton(provider => provider.GetRequiredService<IDEncoder>().Codec);
         return services;
     }
 

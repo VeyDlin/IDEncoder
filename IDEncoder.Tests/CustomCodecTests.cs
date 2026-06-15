@@ -44,4 +44,18 @@ public class CustomCodecTests {
 
         Assert.IsType<ReverseDigitsCodec>(provider.GetRequiredService<IIdCodec>());
     }
+
+    [Fact]
+    public void CustomCodec_RegisteredViaFactory_ResolvesAndConfiguresConverter() {
+        var services = new ServiceCollection();
+        services.AddIDEncoder(provider => (IIdCodec)new ReverseDigitsCodec());
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Resolving IDEncoder triggers the lazy factory, which sets EncodedIdConverter.Encoder.
+        var encoder = serviceProvider.GetRequiredService<IDEncoder>();
+
+        Assert.Equal("21", encoder.Encode(12));
+        Assert.IsType<ReverseDigitsCodec>(serviceProvider.GetRequiredService<IIdCodec>());
+        Assert.NotNull(EncodedIdConverter.Encoder);
+    }
 }
