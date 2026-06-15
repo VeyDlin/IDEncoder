@@ -160,12 +160,18 @@ public readonly struct EncodedId : IEquatable<EncodedId>, IParsable<EncodedId> {
     /// </returns>
     public static bool TryParse([NotNullWhen(true)] string? s, string? salt, out EncodedId result) {
         result = default;
-        if (string.IsNullOrEmpty(s) || s.Length != IDEncoder.EncodedLength) {
+        if (string.IsNullOrEmpty(s)) {
             return false;
         }
 
         var encoder = EncodedIdConverter.Encoder;
         if (encoder is null) {
+            return false;
+        }
+
+        // Upper-bound guard before delegating: keeps untrusted input from reaching the decoder
+        // with an unbounded length (the bare catch below cannot catch a StackOverflowException).
+        if (s.Length > encoder.MaxEncodedLength) {
             return false;
         }
 
