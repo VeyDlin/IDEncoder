@@ -65,4 +65,34 @@ public static class ServiceCollectionExtensions {
         services.TryAddSingleton<IDEncoderProvider>();
         return services;
     }
+
+
+    /// <summary>
+    /// Registers <see cref="IDEncoder"/> (and the underlying <see cref="IIdCodec"/>) as singletons
+    /// using the given codec. Also configures JSON/route binding.
+    /// </summary>
+    public static IServiceCollection AddIDEncoder(this IServiceCollection services, IIdCodec codec) {
+        var encoder = new IDEncoder(codec);
+        EncodedIdConverter.Encoder = encoder;
+        services.AddSingleton(encoder);
+        services.AddSingleton(encoder.Codec);
+        return services;
+    }
+
+
+    /// <summary>
+    /// Registers <see cref="IDEncoder"/> (and the underlying <see cref="IIdCodec"/>) as singletons
+    /// using a codec resolved from DI. The encoder is created lazily on first resolve; if you use
+    /// this overload, ensure <see cref="IDEncoder"/> is resolved at startup before the first
+    /// serialization/route-binding so the JSON converter is configured.
+    /// </summary>
+    public static IServiceCollection AddIDEncoder(this IServiceCollection services, Func<IServiceProvider, IIdCodec> codecFactory) {
+        services.AddSingleton(provider => {
+            var encoder = new IDEncoder(codecFactory(provider));
+            EncodedIdConverter.Encoder = encoder;
+            return encoder;
+        });
+        services.AddSingleton(provider => provider.GetRequiredService<IDEncoder>().Codec);
+        return services;
+    }
 }
