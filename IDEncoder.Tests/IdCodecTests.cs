@@ -36,4 +36,10 @@ public class IdCodecTests {
         Assert.Same(first, second);
         Assert.Equal(1, codec.CreateWithSaltCalls);
     }
+
+    [Fact]
+    public void BlowfishEncodedLength_MatchesMaxEncodedLength() {
+        Assert.Equal(11, BlowfishIdCodec.EncodedLength);
+        Assert.Equal(BlowfishIdCodec.EncodedLength, new BlowfishIdCodec("k").MaxEncodedLength);
+    }
 }

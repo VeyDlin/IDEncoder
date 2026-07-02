@@ -58,7 +58,7 @@ public static class ServiceCollectionExtensions {
     /// <summary>
     /// Registers <see cref="IDEncoderProvider"/> as a singleton for deferred initialization.
     /// Use when the secret key is not available at startup (e.g. loaded from a database at runtime).
-    /// Call <see cref="IDEncoderProvider.Configure"/> when the key becomes available —
+    /// Call <see cref="IDEncoderProvider.Configure(string)"/> when the key becomes available —
     /// after that, JSON serialization and route binding start working automatically.
     /// </summary>
     /// <param name="services">The service collection.</param>

@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="IDEncoder/IDEncoder.csproj" />
+  <Project Path="IDEncoder.AspNetCore/IDEncoder.AspNetCore.csproj" />
   <Project Path="IDEncoder.Tests/IDEncoder.Tests.csproj" />
 </Solution>

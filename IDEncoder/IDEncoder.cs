@@ -10,7 +10,8 @@ public sealed class IDEncoder {
     /// Length of a Blowfish-encoded ID (always 11). Blowfish-specific — for general zero-alloc
     /// buffer sizing use <see cref="MaxEncodedLength"/>, which reflects the active codec.
     /// </summary>
-    public const int EncodedLength = 11;
+    [Obsolete("Use MaxEncodedLength for buffer sizing, or BlowfishIdCodec.EncodedLength for the Blowfish-specific constant.")]
+    public const int EncodedLength = BlowfishIdCodec.EncodedLength;
 
     private readonly IIdCodec codec;
 

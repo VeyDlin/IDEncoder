@@ -6,7 +6,8 @@ namespace IDEncoder;
 
 /// <summary>
 /// Model binder for <see cref="EncodedId"/> that supports <see cref="SaltAttribute"/> on controller parameters.
-/// Decodes Base62 route/query values with the correct salt.
+/// Decodes Base62 route/query values with the correct salt. Resolves the encoder from the
+/// request's DI container, falling back to the ambient process-wide encoder.
 /// </summary>
 /// <example>
 /// <code>
@@ -41,7 +42,8 @@ internal sealed class EncodedIdModelBinder : IModelBinder {
             return Task.CompletedTask;
         }
 
-        var encoder = EncodedIdConverter.Encoder;
+        var encoder = EncoderResolution.FromServices(bindingContext.HttpContext.RequestServices)
+            ?? EncodedIdConverter.Encoder;
         if (encoder is null) {
             bindingContext.ModelState.TryAddModelError(modelName, "IDEncoder is not configured.");
             return Task.CompletedTask;
