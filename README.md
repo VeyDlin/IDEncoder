@@ -227,27 +227,3 @@ int n = encoder.Encode(42, buffer);
 // Decode from the written slice (works for fixed- and variable-length codecs)
 long id = encoder.Decode(buffer[..n]);
 ```
-
-## Upgrading
-
-### From 0.4.x to 0.5.0
-
-- **Package split** — model binding (`UseIDEncoderModelBinding`) moved to the new
-  `IDEncoder.AspNetCore` package; the core package no longer references ASP.NET Core.
-  Web apps: add `IDEncoder.AspNetCore`. Everything stays in the `IDEncoder` namespace,
-  so no `using` changes.
-- **Raw JSON numbers are now rejected by default** (see JSON behavior above).
-  Opt back in with `allowNumericInput: true` while migrating clients.
-- **Malformed encoded IDs in JSON bodies now produce HTTP 400** (a `JsonException`)
-  instead of a 500 (`ArgumentException`).
-- `IDEncoder.EncodedLength` is obsolete — use `MaxEncodedLength` (codec-aware) or
-  `BlowfishIdCodec.EncodedLength`.
-- New: `AddIDEncoderJson()` (IDEncoder.AspNetCore) binds MVC JSON to the DI-registered
-  encoder; `JsonSerializerOptions.UseIDEncoder(encoder)` binds standalone options to a
-  specific encoder without touching process-wide state.
-
-### From 0.3.x
-
-The zero-alloc `Encode(long, Span<char>, …)` overload returns `int` (characters written)
-instead of `void` since 0.4.0 — recompile and use the count to slice variable-length
-output: `encoder.Decode(buffer[..n])`.
