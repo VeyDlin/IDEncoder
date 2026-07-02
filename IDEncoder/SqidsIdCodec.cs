@@ -28,16 +28,19 @@ public sealed class SqidsIdCodec : IdCodec {
     /// <summary>For tests: the permuted alphabet of this instance.</summary>
     internal ReadOnlySpan<char> ShuffledAlphabet => shuffled;
 
+    /// <inheritdoc/>
     protected override IIdCodec CreateWithSalt(string salt) {
         return new SqidsIdCodec(salt);
     }
 
+    /// <inheritdoc/>
     public override string Encode(long id) {
         Span<char> buffer = stackalloc char[MaxEncodedLength];
         int written = Encode(id, buffer);
         return new string(buffer[..written]);
     }
 
+    /// <inheritdoc/>
     public override int Encode(long id, Span<char> destination) {
         if (destination.Length < MaxEncodedLength) {
             throw new ArgumentException(
@@ -66,6 +69,7 @@ public sealed class SqidsIdCodec : IdCodec {
         return 1 + count;
     }
 
+    /// <inheritdoc/>
     public override long Decode(ReadOnlySpan<char> encoded) {
         if (encoded.Length < 2 || encoded.Length > MaxEncodedLength) {
             throw new ArgumentException("Invalid encoded ID format.", nameof(encoded));

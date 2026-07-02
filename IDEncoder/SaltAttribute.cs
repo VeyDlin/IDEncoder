@@ -7,7 +7,7 @@ namespace IDEncoder;
 /// Works with:
 /// <list type="bullet">
 /// <item>JSON serialization — requires <see cref="IDEncoderJsonExtensions.UseIDEncoderSalts"/> on <c>JsonSerializerOptions</c>.</item>
-/// <item>Route/query binding — requires <see cref="IDEncoderMvcExtensions.UseIDEncoderModelBinding"/> on <c>MvcOptions</c>.</item>
+/// <item>Route/query binding — requires <c>UseIDEncoderModelBinding()</c> on <c>MvcOptions</c> (IDEncoder.AspNetCore package).</item>
 /// </list>
 /// </summary>
 /// <example>

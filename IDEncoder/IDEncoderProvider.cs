@@ -5,7 +5,7 @@ namespace IDEncoder;
 /// Provides deferred initialization of <see cref="IDEncoder"/> for scenarios
 /// where the secret key is not available at startup (e.g. loaded from a database at runtime).
 /// Register with <see cref="ServiceCollectionExtensions.AddIDEncoderProvider"/>
-/// and call <see cref="Configure"/> when the key becomes available.
+/// and call <see cref="Configure(string)"/> when the key becomes available.
 /// </summary>
 public sealed class IDEncoderProvider {
     private IDEncoder? encoder;
@@ -14,14 +14,14 @@ public sealed class IDEncoderProvider {
     /// Returns the configured <see cref="IDEncoder"/> instance.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when <see cref="Configure"/> has not been called yet.
+    /// Thrown when <see cref="Configure(string)"/> has not been called yet.
     /// </exception>
     public IDEncoder Encoder => encoder
         ?? throw new InvalidOperationException("IDEncoder is not configured yet. Call IDEncoderProvider.Configure() first.");
 
 
     /// <summary>
-    /// Whether the encoder has been initialized via <see cref="Configure"/>.
+    /// Whether the encoder has been initialized via <see cref="Configure(string)"/>.
     /// </summary>
     public bool IsConfigured => encoder is not null;
 

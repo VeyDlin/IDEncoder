@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\IDEncoder\IDEncoder.csproj" />
+    <ProjectReference Include="..\IDEncoder.AspNetCore\IDEncoder.AspNetCore.csproj" />
   </ItemGroup>
 
 </Project>

@@ -7,8 +7,8 @@ namespace IDEncoder;
 /// <summary>
 /// JSON converter for <see cref="EncodedId"/>.
 /// Writes long values as Base62 strings, reads both Base62 strings and raw numbers.
-/// Configured automatically by <see cref="ServiceCollectionExtensions.AddIDEncoder"/>
-/// or <see cref="IDEncoderProvider.Configure"/>.
+/// Configured automatically by <see cref="ServiceCollectionExtensions.AddIDEncoder(Microsoft.Extensions.DependencyInjection.IServiceCollection, string)"/>
+/// or <see cref="IDEncoderProvider.Configure(string)"/>.
 /// </summary>
 public sealed class EncodedIdConverter : JsonConverter<EncodedId> {
     internal static IDEncoder? Encoder { get; set; }
