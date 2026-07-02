@@ -24,8 +24,12 @@ JSON:      { "id": "xK9mQ3bPl2a", "title": "..." }
 ## Install
 
 ```bash
-dotnet add package IDEncoder
+dotnet add package IDEncoder                # core: encoding, EncodedId, JSON, DI
+dotnet add package IDEncoder.AspNetCore     # + MVC model binding and JSON wiring
 ```
+
+The core package has no ASP.NET Core dependency — it works in console apps, workers and
+plain `dotnet/runtime` containers. Add `IDEncoder.AspNetCore` only in web apps.
 
 ## Quick start
 
@@ -102,6 +106,18 @@ services.AddIDEncoder(provider => {
 services.AddIDEncoderProvider();
 ```
 
+Then wire MVC (IDEncoder.AspNetCore package):
+
+```csharp
+services.AddControllers(o => o.UseIDEncoderModelBinding())  // EncodedId route binding + [Salt]
+    .AddIDEncoderJson();                                    // EncodedId JSON + [Salt] via DI
+```
+
+`AddIDEncoderJson()` binds JSON serialization to the encoder registered in DI (any of the
+three registration styles above, including the deferred provider). The manual
+`AddJsonOptions(o => o.JsonSerializerOptions.UseIDEncoderSalts())` setup still works and
+uses the process-wide ambient encoder instead.
+
 For deferred initialization, call `Configure` when the key becomes available:
 
 ```csharp
@@ -156,11 +172,11 @@ public record GalleryResult(
 // GalleryResult: { "id": "p3KmW8vLn9a", "title": "..." }
 ```
 
-Enable salt support in JSON and route binding:
+Salt support in JSON and route binding is enabled by the standard wiring:
 
 ```csharp
 services.AddControllers(o => o.UseIDEncoderModelBinding())
-    .AddJsonOptions(o => o.JsonSerializerOptions.UseIDEncoderSalts());
+    .AddIDEncoderJson();
 ```
 
 Salt also works on controller parameters for route/query binding:
@@ -178,7 +194,26 @@ public async Task<IActionResult> TestConnection([Salt("s3")] EncodedId id) {
 |---|---|
 | `Write(42)` | `"xK9mQ3bPl2a"` |
 | `Read("xK9mQ3bPl2a")` | `42` |
-| `Read(42)` | `42` (raw numbers accepted too) |
+| `Read(42)` | rejected with a 400 by default |
+
+Raw JSON numbers are **rejected by default**: if they were accepted, any endpoint binding an
+`EncodedId` from a request body would let clients address resources by plain sequential
+numbers (`{"id": 1}`, `{"id": 2}`, …), bypassing the encoding entirely. If you are migrating
+clients that still send numbers, enable it explicitly and consciously:
+
+```csharp
+.AddIDEncoderJson(allowNumericInput: true)
+// or: o.JsonSerializerOptions.UseIDEncoder(encoder, allowNumericInput: true)
+```
+
+## Security notes
+
+- **Encoding hides IDs; it does not authorize.** Nearly any well-formed 11-character Base62
+  string decodes to *some* `long` — decode success does not prove the caller was ever given
+  that ID. Always perform existence and authorization checks after decoding.
+- Blowfish encoding is deterministic: the same ID with the same key and salt always produces
+  the same string. Use salts to stop IDs from being tried across entity types.
+- `SqidsIdCodec` is obfuscation only — anyone can decode its output without a key.
 
 ## Zero-alloc API
 
@@ -193,9 +228,26 @@ int n = encoder.Encode(42, buffer);
 long id = encoder.Decode(buffer[..n]);
 ```
 
-## Upgrading from 0.3.x
+## Upgrading
 
-The zero-alloc `Encode(long, Span<char>, …)` overload now returns `int` (the number of
-characters written) instead of `void`. Source-compatible if you ignore the result, but a
-binary-breaking change — recompile against 0.4.0. Use the returned count to slice
-variable-length output before decoding: `encoder.Decode(buffer[..n])`.
+### From 0.4.x to 0.5.0
+
+- **Package split** — model binding (`UseIDEncoderModelBinding`) moved to the new
+  `IDEncoder.AspNetCore` package; the core package no longer references ASP.NET Core.
+  Web apps: add `IDEncoder.AspNetCore`. Everything stays in the `IDEncoder` namespace,
+  so no `using` changes.
+- **Raw JSON numbers are now rejected by default** (see JSON behavior above).
+  Opt back in with `allowNumericInput: true` while migrating clients.
+- **Malformed encoded IDs in JSON bodies now produce HTTP 400** (a `JsonException`)
+  instead of a 500 (`ArgumentException`).
+- `IDEncoder.EncodedLength` is obsolete — use `MaxEncodedLength` (codec-aware) or
+  `BlowfishIdCodec.EncodedLength`.
+- New: `AddIDEncoderJson()` (IDEncoder.AspNetCore) binds MVC JSON to the DI-registered
+  encoder; `JsonSerializerOptions.UseIDEncoder(encoder)` binds standalone options to a
+  specific encoder without touching process-wide state.
+
+### From 0.3.x
+
+The zero-alloc `Encode(long, Span<char>, …)` overload returns `int` (characters written)
+instead of `void` since 0.4.0 — recompile and use the count to slice variable-length
+output: `encoder.Decode(buffer[..n])`.
