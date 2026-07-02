@@ -34,13 +34,15 @@ jobs:
       - name: Run tests
         run: dotnet test IDEncoder.Tests/IDEncoder.Tests.csproj --configuration Release --no-build --verbosity normal
 
-      - name: Pack library
-        run: dotnet pack IDEncoder/IDEncoder.csproj --configuration Release --no-build --output ./nuget
+      - name: Pack libraries
+        run: |
+          dotnet pack IDEncoder/IDEncoder.csproj --configuration Release --no-build -p:ContinuousIntegrationBuild=true --output ./nuget
+          dotnet pack IDEncoder.AspNetCore/IDEncoder.AspNetCore.csproj --configuration Release --no-build -p:ContinuousIntegrationBuild=true --output ./nuget
 
-      - name: Get current version from csproj
+      - name: Get current version from Directory.Build.props
         id: get_version
         run: |
-          ver=$(grep -oPm1 "(?<=<Version>)[^<]+" IDEncoder/IDEncoder.csproj)
+          ver=$(grep -oPm1 "(?<=<Version>)[^<]+" Directory.Build.props)
           echo "version=$ver" >> $GITHUB_OUTPUT
 
       - name: Check if tag exists
