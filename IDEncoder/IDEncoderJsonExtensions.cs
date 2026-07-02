@@ -44,7 +44,7 @@ public static class IDEncoderJsonExtensions {
                 .FirstOrDefault();
 
             if (saltAttr is not null) {
-                property.CustomConverter = new EncodedIdConverter(saltAttr.Salt);
+                property.CustomConverter = new EncodedIdConverter(null, saltAttr.Salt, false);
             }
         }
     }
