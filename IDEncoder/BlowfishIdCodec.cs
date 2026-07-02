@@ -9,6 +9,9 @@ namespace IDEncoder;
 /// Thread-safe after construction.
 /// </summary>
 public sealed class BlowfishIdCodec : IdCodec {
+    /// <summary>Length of every Blowfish-encoded ID (always 11 Base62 characters).</summary>
+    public const int EncodedLength = 11;
+
     private const string Base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
     private readonly string baseKey;
@@ -29,8 +32,8 @@ public sealed class BlowfishIdCodec : IdCodec {
         cipher = new Blowfish(MakeKeyBytes(effectiveKey));
     }
 
-    /// <summary>Always 11 for Blowfish.</summary>
-    public override int MaxEncodedLength => 11;
+    /// <summary>Always <see cref="EncodedLength"/> for Blowfish.</summary>
+    public override int MaxEncodedLength => EncodedLength;
 
     /// <inheritdoc/>
     protected override IIdCodec CreateWithSalt(string salt) {
