@@ -8,7 +8,7 @@ namespace IDEncoder;
 /// JSON converter for <see cref="EncodedId"/>.
 /// Writes long values as Base62 strings; reads Base62 strings, and raw JSON numbers only when
 /// numeric input was explicitly enabled at configuration time.
-/// Instances created via <c>JsonSerializerOptions.UseIDEncoder(...)</c>
+/// Instances created via <see cref="IDEncoderJsonExtensions.UseIDEncoder(JsonSerializerOptions, IDEncoder, bool)"/>
 /// are bound to that encoder and never consult the ambient static; the parameterless instance
 /// used by the <c>[JsonConverter]</c> attribute falls back to the ambient encoder configured by
 /// <c>AddIDEncoder</c> or <see cref="IDEncoderProvider.Configure(string)"/>.
