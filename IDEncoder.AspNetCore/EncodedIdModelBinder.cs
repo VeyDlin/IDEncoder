@@ -70,7 +70,7 @@ internal sealed class EncodedIdModelBinder : IModelBinder {
 internal sealed class EncodedIdModelBinderProvider : IModelBinderProvider {
     /// <inheritdoc/>
     public IModelBinder? GetBinder(ModelBinderProviderContext context) {
-        if (context.Metadata.ModelType != typeof(EncodedId)) {
+        if (context.Metadata.ModelType != typeof(EncodedId) && context.Metadata.ModelType != typeof(EncodedId?)) {
             return null;
         }
 

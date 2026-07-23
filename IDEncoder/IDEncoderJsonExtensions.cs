@@ -107,7 +107,7 @@ public static class IDEncoderJsonExtensions {
 
     private static void ApplySaltModifier(JsonTypeInfo typeInfo, Func<IDEncoder?>? encoderSource, bool allowNumericInput) {
         foreach (var property in typeInfo.Properties) {
-            if (property.PropertyType != typeof(EncodedId)) {
+            if (property.PropertyType != typeof(EncodedId) && property.PropertyType != typeof(EncodedId?)) {
                 continue;
             }
 
@@ -117,7 +117,10 @@ public static class IDEncoderJsonExtensions {
                 .FirstOrDefault();
 
             if (saltAttr is not null) {
-                property.CustomConverter = new EncodedIdConverter(encoderSource, saltAttr.Salt, allowNumericInput);
+                var converter = new EncodedIdConverter(encoderSource, saltAttr.Salt, allowNumericInput);
+                property.CustomConverter = property.PropertyType == typeof(EncodedId?)
+                    ? new NullableEncodedIdConverter(converter)
+                    : converter;
             }
         }
     }
